@@ -34,3 +34,32 @@ This is incorrect because invalidatesTags is only applied when the mutation succ
 
 > One thing that looks like a defect but is actually correct is performing `updateQueryData` before awaiting `queryFulfilled`. This is an intentional optimistic update that provides immediate UI feedback. The approach is valid as long as failed requests correctly undo the optimistic change.
 
+
+## Q3
+The fixed code:
+```typescript
+export function useSupplierName(supplierId: string) {
+  const { data, isLoading, isError } = useGetSupplierQuery(supplierId);
+  return { name: data?.name ?? '', isLoading, isError };
+}
+
+export const SupplierBadge = memo(({ supplierId }: { supplierId: string }) => {
+  const { name, isLoading, isError } = useSupplierName(supplierId);
+  if (isLoading) return <Skeleton className="h-5 w-24" />;
+  if (isError) return null;
+  return (
+    <span className="rounded bg-muted px-2 py-0.5 text-xs">
+      {name.toUpperCase()}
+    </span>
+  );
+});
+```
+
+**Explanation**
+
+- **I removed `useState`**, because `name` is derived directly from the query result and duplicating it creates unnecessary state that can become stale.
+- **I removed `useEffect`**, because it only copied `data.name` into local state. This added an extra render and introduced a bug where a reused `SupplierBadge` instance could temporarily display the previous supplier's name until the effect ran again. Returning `data?.name` directly keeps a single source of truth and eliminates this stale-state issue.
+
+**I removed `useMemo`**, because `name.toUpperCase()` is a trivial computation. Memoizing it adds overhead without providing a measurable performance benefit.
+
+**The rewrite does not solve the 200-row performance problem.** Rendering one `SupplierBadge` per row still results in up to 200 supplier queries (an N+1 problem). The correct fix belongs in the API level, for example by returning supplier names with the product list or providing a bulk supplier endpoint.
