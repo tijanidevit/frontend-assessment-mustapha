@@ -1,7 +1,8 @@
 "use client";
 
-import { orders, type Order } from '@/libs/orders';
+import { orders, type Order } from '@/lib/orders';
 import { useState } from 'react';
+import { OrderRow } from './components/OrderRow';
 
 export default function Home() {
   const [search, setSearch] = useState('');
@@ -39,15 +40,7 @@ export default function Home() {
 
           <tbody>
             {filteredOrders.map((order: Order) => (
-              <tr key={order.id} className="border-b">
-                <td className="p-3">{order.orderNumber}</td>
-                <td className="p-3">{order.customer}</td>
-                <td className="p-3">{order.status}</td>
-                <td className="p-3">${order.total.toFixed(2)}</td>
-                <td className="p-3">
-                  {new Date(order.date).toLocaleDateString()}
-                </td>
-              </tr>
+              <OrderRow key={order.id} order={order} />
             ))}
           </tbody>
         </table>
