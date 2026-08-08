@@ -198,3 +198,65 @@ I would keep: #2, because selecting every product matching the current filter is
 **Deliberately not commented on:** autocomplete and duplicate prevention, because neither is explicitly required by the two acceptance criteria.
 
 **Acceptance criteria:** AC-1 **cannot be confirmed from the diff alone**; I would inspect the API contract and test multiple suppliers. AC-2 **is not met** because `clear()` performs a full page reload.
+
+
+
+## Q10
+
+### 1. First 60 minutes
+
+**Block the `development` branch**: ask everyone to stop pushing, rebasing, or running Git commands against it. Preserve the current remote HEAD and investigate the force-push before changing anything else.
+
+**Identify previous HEAD and missing commits**: Identify the previous `development` HEAD, the missing eleven commits, and the four deleted PR branch tips using reflogs and existing local clones. Determine whether all commits are recoverable.
+
+**Restore `development`**: Restore `development` to the correct commit and recreate the four remote branches/PR branches from their recovered commit references.
+
+**Verify the recovered history**, CI, PRs, and that developers can safely resume work.
+
+### 2. Blocked developers
+
+I would tell them immediately that `development` branch was accidentally force pushed and ask them to stop pushing or rebasing against it while I recover the branch. I'd update them as soon as it's safe.
+
+### 3. Business owner
+
+I would **not escalate just yet**, because production is unaffected and recovery is actively underway. I would notify the business owner if recovery threatens delivery or materially impacts timelines, and provide a concise incident summary once resolved.
+
+### 4. Permanent change
+
+Protect `development` against force-pushes and unauthorized branch deletion, and establish a documented recovery procedure. The engineering lead/team and repository owner should agree to these repository-permission and workflow changes.
+
+
+## Q11
+
+**To the developer**:
+"Hi {name}, I know you’re under time pressure, but 900+ line PRs without tests create unnecessary risk and make review harder. I understand splitting work feels slower, but debugging regressions after merging costs us more time. For changes this large, let’s break them into reviewable pieces and add the appropriate tests. The goal isn’t to slow you down, it’s to ship confidently without creating rework."
+
+**To the business owner**:
+"Hello {name}, I understand the priority is shipping faster. We should absolutely improve our delivery speed, but not by accepting changes that increase defects and rework. I’ll work with the team to make changes easier to review and validate so we can ship faster without sacrificing reliability."
+
+## Q12
+
+I introduced a production bug in Routely’s shipment creation flow. During final shipment creation, the frontend failed to send the required `serviceStation` value for a specific interstate/drop-off shipment path because my conditional logic applied the requirement to the wrong shipment type. The backend therefore fell back to a generic pickup value, so the customer’s approval documentation did not contain the exact service-station address they needed.
+
+The bug was discovered by a colleague who used that shipment flow in production. It had been live for roughly 2–3 weeks because most customers used premium shipments, while this less-common flow was rarely exercised.
+
+After fixing it, I changed how I work around conditional business flows. I now explicitly test the request payload for each important branch, rather than testing only the main successful path. I also added frontend Jest tests and backend request tests to verify that the correct fields are sent and validated for each shipment type.
+
+
+
+## Q13
+
+### 1. Routely — Admin & Operations Dashboard
+
+I built the Next.js admin dashboard and the API behind it, used by operations and administrators to manage shipments, customers, pricing, approvals, wallets, and other logistics operations. Because I owned both sides, I defined the API contracts around the admin workflows and implemented them together. The hardest part was enforcing granular RBAC across sensitive operations while handling complex shipment states, pricing rules, and multiple logistics providers.
+
+**staging website** - https://admin-staging.routely.co/
+**Email:** `admin@routely.co`
+**Password:** `password`
+
+
+### 2. Scandium — Platform Analytics & Admin Dashboard
+
+I built the backend and React admin interface used internally by Scandium administrators to monitor platform activity, including test runs, users, active-user metrics, subscriptions, and feature access. I also implemented the APIs, so I defined the contracts alongside the dashboard requirements. The hardest part was bringing together platform-wide analytics and administrative controls while maintaining strict multi-tenant isolation and role-based access control.
+
+
