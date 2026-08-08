@@ -20,11 +20,12 @@ const customers = [
     'NgN Enterprises',
 ];
 
-const getRandomInt = (min: number, max: number) => 
-    Math.floor(Math.random() * (max - min + 1)) + min;
+// Deterministic helpers — no Math.random() so SSR and client produce identical output
+const getDeterministicInt = (index: number, min: number, max: number) =>
+    min + (index * 37 + 13) % (max - min + 1);
 
-const getRandomDateIn2026 = () => 
-    new Date(Date.UTC(2026, 0, getRandomInt(1, 180))).toISOString();
+const getDeterministicDateIn2026 = (index: number) =>
+    new Date(Date.UTC(2026, 0, 1 + (index * 37) % 180)).toISOString();
 
 export const orders: Order[] = Array.from({ length: 5000 }, (_, index) => {
     const id = index + 1;
@@ -33,7 +34,7 @@ export const orders: Order[] = Array.from({ length: 5000 }, (_, index) => {
         orderNumber: `ORD-${String(id).padStart(5, '0')}`,
         customer: customers[index % customers.length],
         status: statuses[index % statuses.length],
-        total: getRandomInt(25, 1000),
-        date: getRandomDateIn2026(),
+        total: getDeterministicInt(index, 25, 1000),
+        date: getDeterministicDateIn2026(index),
     };
 });
