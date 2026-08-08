@@ -1,3 +1,5 @@
+import { statuses } from "./status";
+
 export type Status = 'NEW' | 'PICKING' | 'SHIPPED' | 'CANCELLED';
 
 export type Order = {
@@ -8,8 +10,6 @@ export type Order = {
     total: number;
     date: string;
 };
-
-const statuses: Status[] = ['NEW', 'PICKING', 'SHIPPED', 'CANCELLED'];
 
 const customers = [
     'Mustapha Ltd',

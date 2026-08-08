@@ -3,12 +3,14 @@
 import { orders, type Order } from '@/lib/orders';
 import { OrderRow } from './components/OrderRow';
 import { useSearchParams, useRouter } from "next/navigation";
+import { StatusFilter } from './components/StatusFilter';
 
 export default function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const search = searchParams.get("search") ?? "";
+  const selectedStatuses = searchParams.get("status")?.split(",") ?? [];
 
 
   function updateSearch(value: string) {
@@ -20,12 +22,21 @@ export default function Home() {
       params.delete("search");
     }
 
-    router.push(`?${params.toString()}`);
+    router.replace(`?${params.toString()}`);
   }
 
-  const filteredOrders = orders.filter((order) =>
-    order.orderNumber.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredOrders = orders.filter((order) => {
+    const searchResult =
+      order.orderNumber
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+    const statusResult =
+      selectedStatuses.length === 0 ||
+      selectedStatuses.includes(order.status);
+
+    return searchResult && statusResult;
+  });
 
   return (
     <main className="p-6">
@@ -40,6 +51,8 @@ export default function Home() {
           placeholder="Search by order number..."
           className="w-full max-w-sm rounded border px-3 py-2"
         />
+
+        <StatusFilter />
       </div>
 
       <div className="overflow-x-auto">
