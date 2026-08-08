@@ -4,7 +4,7 @@ import { orders, type Order } from '@/lib/orders';
 import { OrderRow } from './components/OrderRow';
 import { useSearchParams, useRouter } from "next/navigation";
 import { StatusFilter } from './components/StatusFilter';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { OrderDetailsPanel } from './components/OrderDetailsPanel';
 
 export default function Home() {
@@ -22,6 +22,7 @@ export default function Home() {
 
   const activeRowRef = useRef<HTMLTableRowElement | null>(null);
 
+  const openedRowRef = useRef<number | null>(null);
 
   const updateSearch = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -80,14 +81,18 @@ export default function Home() {
         const order = filteredOrdersRef.current[currentIndex];
 
         if (order) {
+          openedRowRef.current = currentIndex;
           setSelectedOrder(order);
         }
       }
 
       if (event.key === "Escape") {
         setSelectedOrder(null);
-        // Return focus to the highlighted row after the panel closes
-        activeRowRef.current?.focus();
+        // Snap cursor back to the row that was opened, not wherever arrows drifted
+        if (openedRowRef.current !== null) {
+          setActiveIndex(openedRowRef.current);
+          openedRowRef.current = null; // consume it
+        }
       }
     }
 
@@ -96,6 +101,24 @@ export default function Home() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
+  }, []);
+
+  // Move browser focus to the newly highlighted row after each Arrow key press.
+  useEffect(() => {
+    if (activeIndex >= 0) {
+      activeRowRef.current?.focus();
+    }
+  }, [activeIndex]);
+
+  // Stable close handler — used by both the X button and Escape.
+  // useCallback with [] is safe: setSelectedOrder/setActiveIndex are stable
+  // setters, and openedRowRef is a ref (stable object, not a value).
+  const handleClose = useCallback(() => {
+    setSelectedOrder(null);
+    if (openedRowRef.current !== null) {
+      setActiveIndex(openedRowRef.current);
+      openedRowRef.current = null;
+    }
   }, []);
 
   return (
@@ -127,13 +150,26 @@ export default function Home() {
             </tr>
           </thead>
 
-          <tbody>
+          <tbody
+            onClick={(e) => {
+              // Delegate row clicks from tbody to avoid creating handlers for every row.
+              // closest() walks up from the clicked <td> to find the <tr>.
+              const row = (e.target as HTMLElement).closest<HTMLTableRowElement>('tr[data-index]');
+              if (!row) return;
+              const index = Number(row.dataset.index);
+              const order = filteredOrders[index];
+              if (!order) return;
+              openedRowRef.current = index; // snapshot for Escape
+              setActiveIndex(index);
+              setSelectedOrder(order);
+            }}
+          >
             {filteredOrders.map((order: Order, index: number) => (
               <OrderRow
                 key={order.id}
                 order={order}
-                onClick={setSelectedOrder}
                 active={index === activeIndex}
+                index={index}
                 ref={index === activeIndex ? activeRowRef : null}
               />
             ))}
@@ -143,7 +179,7 @@ export default function Home() {
 
       <OrderDetailsPanel
         order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
+        onClose={handleClose}
       />
     </main>
   );
