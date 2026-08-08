@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+.screen-only {
+  display: block;
+}
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .screen-only {
+    display: none;
+  }
+
+  .print-only {
+    display: block;
+  }
+}

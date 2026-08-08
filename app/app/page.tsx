@@ -1,11 +1,12 @@
 "use client";
 
-import { orders, type Order } from '@/lib/orders';
-import { OrderRow } from './components/OrderRow';
+import { orders } from '@/lib/orders';
+import { OrderTable } from './components/OrderTable';
 import { useSearchParams, useRouter } from "next/navigation";
 import { StatusFilter } from './components/StatusFilter';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { OrderDetailsPanel } from './components/OrderDetailsPanel';
+import { PrintTable } from './components/PrintTable';
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -138,45 +139,23 @@ export default function Home() {
         <StatusFilter />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead className='bg-blue-500'>
-            <tr className="border-b text-left">
-              <th className="p-3">Order</th>
-              <th className="p-3">Customer</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Total</th>
-              <th className="p-3">Date</th>
-            </tr>
-          </thead>
-
-          <tbody
-            onClick={(e) => {
-              // Delegate row clicks from tbody to avoid creating handlers for every row.
-              // closest() walks up from the clicked <td> to find the <tr>.
-              const row = (e.target as HTMLElement).closest<HTMLTableRowElement>('tr[data-index]');
-              if (!row) return;
-              const index = Number(row.dataset.index);
-              const order = filteredOrders[index];
-              if (!order) return;
-              openedRowRef.current = index; // snapshot for Escape
-              setActiveIndex(index);
-              setSelectedOrder(order);
-            }}
-          >
-            {filteredOrders.map((order: Order, index: number) => (
-              <OrderRow
-                key={order.id}
-                order={order}
-                active={index === activeIndex}
-                index={index}
-                ref={index === activeIndex ? activeRowRef : null}
-              />
-            ))}
-          </tbody>
-        </table>
+      <div className="screen-only">
+        <OrderTable
+          orders={filteredOrders}
+          activeIndex={activeIndex}
+          activeRowRef={activeRowRef}
+          openedRowRef={openedRowRef}
+          onRowClick={(order, index) => {
+            setActiveIndex(index);
+            setSelectedOrder(order);
+          }}
+        />
       </div>
 
+      <div className="print-only">
+        <PrintTable orders={filteredOrders}/>
+      </div>
+      
       <OrderDetailsPanel
         order={selectedOrder}
         onClose={handleClose}
