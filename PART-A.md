@@ -132,3 +132,69 @@ Components then consume `AppResult<T>` rather than parsing `ApiResponse<T>` them
 **3.** Runtime codes can still be unknown because the backend may add new error codes. Therefore the adapter preserves `code` as a string and provides generic fallback handling, ensuring the error reaches the user rather than being swallowed.
 
 **4.** If `error.field` does not match frontend field names, the form cannot attach the error correctly. Ideally the API contract is fixed; otherwise the adapter maps backend field names to canonical frontend names.
+
+
+## Q6
+
+I would **not accept the virtualization proposal as the primary fix** because it breaks two existing warehouse workflows.
+
+Virtualization renders only the rows near the viewport. Therefore, **Ctrl-F may not find an order that is outside the rendered DOM**, even though it exists in the filtered dataset. It also makes **Ctrl-P unreliable**, because the complete filtered list is not necessarily present in the DOM for printing. Both regressions affect warehouse staff who rely on browser search and printed lists.
+
+I would first profile the six-second delay to identify whether the bottleneck is data fetching, rendering, expensive row work, or unnecessary re-renders. I would then optimize the existing table without removing the complete searchable/printable dataset from the DOM where required.
+
+For printing, I would separate printing from screen rendering: preserve the current filters and have a dedicated print/export path request the **complete filtered result from the backend** and generate a PDF/print document containing all matching orders.
+
+The cost is additional engineering and backend work, plus maintaining a separate print representation. However, this preserves the warehouse's existing Ctrl-F and printing workflows while allowing us to optimize the interactive table based on the actual bottleneck.
+
+
+## Q7
+
+I would choose **(b) Fix the three forms**.
+
+The forms silently discarding user input after server-side validation fails is a **data-loss bug**. It directly destroys user work and can cause users to abandon or incorrectly resubmit their data and can lead to frustration. With only two working days, fixing three forms is also a bounded, achievable change.
+
+The table's **~4-second freeze remains broken** because I am not choosing virtualization. That is a performance problem, but it does not destroy user data.
+
+I would tell the person requesting virtualization:
+
+> “I’m prioritizing the form data-loss issue for the supplier demo because it causes users to lose their work. I’ll address the virtualization work after the demo.”
+
+
+
+## Q8
+
+There is **one definite conflict: requirements 4 and 5**.
+
+**4 + 5 — API limit vs. atomicity:** If more than 500 products are selected, the API cannot process them in one request. Splitting the operation into multiple requests could allow one batch to succeed while another fails, violating the **atomicity requirement**. I would keep **#5**, atomicity protects data consistency during a bulk price change.
+
+**Ticket:** “Bulk price updates must remain atomic for selections above 500 products. Provide a server-side mechanism that supports the complete selection atomically.”
+
+**Business question:** “Is all-or-nothing behavior mandatory above 500 selected products?”
+
+
+**2 + 3 appears contradictory**
+
+If the current filter matches a very large number of products, #2 requires selecting products that have not been loaded into the client, while #3 requires displaying the exact list of affected SKUs before confirmation. Satisfying #3 literally could require fetching and rendering thousands of SKUs solely for confirmation, creating a potentially impractical and slow confirmation step.
+
+I would keep: #2, because selecting every product matching the current filter is the core bulk-selection requirement.
+
+**Ticket:** Replace the exact-list requirement with a scalable confirmation showing the total affected count and filter criteria.
+
+**5 + 6 appears contradictory**, because reporting individual successes and failures suggests partial success. However, they can both be true: with atomicity, the toast can report `100 succeeded, 0 failed` or `0 succeeded, 100 failed`. It only becomes contradictory if requirement 6 means partial success must be possible. I would clarify that interpretation rather than assume a conflict.
+
+
+## Q9
+
+1. **`FilterBar.tsx` — `clear()` violates AC-2.** `window.location.href = '/products'` causes a full page reload, directly contradicting the requirement that clearing returns to the unfiltered state without one. Replace it with state/query updates that trigger the unfiltered query without navigation.
+
+2. **`FilterBar.tsx` — AC-1 cannot be verified from this diff alone.** The UI now stores `suppliers: string[]`, but the diff does not show whether the query type, serialization, and API actually accept multiple suppliers. Verify the `Filters` type, request serialization, and API behavior with a multi-supplier test.
+
+3. **`FilterBar.tsx` — individual selections cannot be removed.** Once a supplier is added, there is no way to remove only that supplier. Add a removal mechanism so users can revise a multi-supplier selection without clearing everything.
+
+4. **`useProducts.ts` — unrelated refetch behavior.** `refetchOnMountOrArgChange: true` is unrelated to either AC and changes query behavior. Remove it or justify it against a specific bug in a separate change.
+
+5. **Scope — unrelated refactoring.** The controlled-component conversion and date-helper extraction are outside this ticket. Split them into separate changes so this PR remains focused and independently reversible.
+
+**Deliberately not commented on:** autocomplete and duplicate prevention, because neither is explicitly required by the two acceptance criteria.
+
+**Acceptance criteria:** AC-1 **cannot be confirmed from the diff alone**; I would inspect the API contract and test multiple suppliers. AC-2 **is not met** because `clear()` performs a full page reload.
