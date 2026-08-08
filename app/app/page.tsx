@@ -4,14 +4,17 @@ import { orders, type Order } from '@/lib/orders';
 import { OrderRow } from './components/OrderRow';
 import { useSearchParams, useRouter } from "next/navigation";
 import { StatusFilter } from './components/StatusFilter';
+import { useState } from 'react';
+import { OrderDetailsPanel } from './components/OrderDetailsPanel';
 
 export default function Home() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
   const search = searchParams.get("search") ?? "";
   const selectedStatuses = searchParams.get("status")?.split(",") ?? [];
-
 
   function updateSearch(value: string) {
     const params = new URLSearchParams(searchParams);
@@ -69,11 +72,16 @@ export default function Home() {
 
           <tbody>
             {filteredOrders.map((order: Order) => (
-              <OrderRow key={order.id} order={order} />
+              <OrderRow key={order.id} order={order} onClick={setSelectedOrder} />
             ))}
           </tbody>
         </table>
       </div>
+
+      <OrderDetailsPanel
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+      />
     </main>
   );
 }
