@@ -4,7 +4,7 @@ import { orders, type Order } from '@/lib/orders';
 import { OrderRow } from './components/OrderRow';
 import { useSearchParams, useRouter } from "next/navigation";
 import { StatusFilter } from './components/StatusFilter';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { OrderDetailsPanel } from './components/OrderDetailsPanel';
 
 export default function Home() {
@@ -12,11 +12,18 @@ export default function Home() {
   const router = useRouter();
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const search = searchParams.get("search") ?? "";
   const selectedStatuses = searchParams.get("status")?.split(",") ?? [];
 
-  function updateSearch(value: string) {
+  const activeIndexRef = useRef(activeIndex);
+  activeIndexRef.current = activeIndex;
+
+  const activeRowRef = useRef<HTMLTableRowElement | null>(null);
+
+
+  const updateSearch = (value: string) => {
     const params = new URLSearchParams(searchParams);
 
     if (value) {
@@ -40,6 +47,56 @@ export default function Home() {
 
     return searchResult && statusResult;
   });
+
+  // Keep a ref to filteredOrders so the window listener always sees the
+  // latest list without needing to re-register on every render.
+  const filteredOrdersRef = useRef(filteredOrders);
+  filteredOrdersRef.current = filteredOrders;
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const currentIndex = activeIndexRef.current;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+
+        setActiveIndex((current) =>
+          Math.min(
+            current + 1,
+            filteredOrdersRef.current.length - 1
+          )
+        );
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+
+        setActiveIndex((current) =>
+          Math.max(current - 1, 0)
+        );
+      }
+
+      if (event.key === "Enter") {
+        const order = filteredOrdersRef.current[currentIndex];
+
+        if (order) {
+          setSelectedOrder(order);
+        }
+      }
+
+      if (event.key === "Escape") {
+        setSelectedOrder(null);
+        // Return focus to the highlighted row after the panel closes
+        activeRowRef.current?.focus();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   return (
     <main className="p-6">
@@ -71,8 +128,14 @@ export default function Home() {
           </thead>
 
           <tbody>
-            {filteredOrders.map((order: Order) => (
-              <OrderRow key={order.id} order={order} onClick={setSelectedOrder} />
+            {filteredOrders.map((order: Order, index: number) => (
+              <OrderRow
+                key={order.id}
+                order={order}
+                onClick={setSelectedOrder}
+                active={index === activeIndex}
+                ref={index === activeIndex ? activeRowRef : null}
+              />
             ))}
           </tbody>
         </table>
