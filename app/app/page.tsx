@@ -1,11 +1,27 @@
 "use client";
 
 import { orders, type Order } from '@/lib/orders';
-import { useState } from 'react';
 import { OrderRow } from './components/OrderRow';
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Home() {
-  const [search, setSearch] = useState('');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const search = searchParams.get("search") ?? "";
+
+
+  function updateSearch(value: string) {
+    const params = new URLSearchParams(searchParams);
+
+    if (value) {
+      params.set("search", value);
+    } else {
+      params.delete("search");
+    }
+
+    router.push(`?${params.toString()}`);
+  }
 
   const filteredOrders = orders.filter((order) =>
     order.orderNumber.toLowerCase().includes(search.toLowerCase())
@@ -20,8 +36,8 @@ export default function Home() {
         <input
           type="search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search order number..."
+          onChange={(event) => updateSearch(event.target.value)}
+          placeholder="Search by order number..."
           className="w-full max-w-sm rounded border px-3 py-2"
         />
       </div>
